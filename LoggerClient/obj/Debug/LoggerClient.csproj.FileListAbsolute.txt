@@ -1,0 +1,9 @@
+C:\Users\ККК\source\repos\LoggerClient\LoggerClient\bin\Debug\LoggerClient.exe.config
+C:\Users\ККК\source\repos\LoggerClient\LoggerClient\bin\Debug\LoggerClient.exe
+C:\Users\ККК\source\repos\LoggerClient\LoggerClient\bin\Debug\LoggerClient.pdb
+C:\Users\ККК\source\repos\LoggerClient\LoggerClient\obj\Debug\LoggerClient.csprojAssemblyReference.cache
+C:\Users\ККК\source\repos\LoggerClient\LoggerClient\obj\Debug\LoggerClient.Properties.Resources.resources
+C:\Users\ККК\source\repos\LoggerClient\LoggerClient\obj\Debug\LoggerClient.csproj.GenerateResource.cache
+C:\Users\ККК\source\repos\LoggerClient\LoggerClient\obj\Debug\LoggerClient.csproj.CoreCompileInputs.cache
+C:\Users\ККК\source\repos\LoggerClient\LoggerClient\obj\Debug\LoggerClient.exe
+C:\Users\ККК\source\repos\LoggerClient\LoggerClient\obj\Debug\LoggerClient.pdb

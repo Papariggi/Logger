@@ -11,7 +11,7 @@ namespace LoggerClient
         [STAThread]
         static void Main(String[] args)
         {
-
+            Client.run("192.168.1.48", 3001);
         }
     }
 }

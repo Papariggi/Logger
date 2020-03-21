@@ -46,6 +46,7 @@
   <ItemGroup>
     <Compile Include="Client.cs" />
     <Compile Include="KeyLogger.cs" />
+    <Compile Include="KeyLogger1.cs" />
     <Compile Include="ProcessLogger.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

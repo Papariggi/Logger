@@ -24,10 +24,10 @@ namespace Logger
             {
                 HashSet<Process> currentProcesses = new HashSet<Process>(Process.GetProcesses());
                 HashSet<Process> buffSet = new HashSet<Process>(currentProcesses);
-                currentProcesses.ExceptWith(processesAtStart);
+                currentProcesses.Except(processesAtStart);
                 processesAtStart = buffSet;
 
-                if (currentProcesses.Count >= 1)
+                if (currentProcesses.Count > processesAtStart.Count)
                 {
                     foreach (var process in currentProcesses)
                     {
@@ -36,12 +36,12 @@ namespace Logger
                         string fullPath = process.MainModule.FileName;
 
                         processStartStr.AppendFormat("[{0}|{1}] | [PROCESS START] | " +
-                            "Process : {2} | Path : {3}",
-                            processStartTimeUTC.ToShortDateString(),
-                            processStartTimeUTC.ToShortTimeString(),
-                            processName,
-                            fullPath
-                           );
+                                                    "Process : {2} | Path : {3}",
+                                                    processStartTimeUTC.ToShortDateString(),
+                                                    processStartTimeUTC.ToShortTimeString(),
+                                                    processName,
+                                                    fullPath
+                                                   );
 
                         processStartStr.Append("\n");
                     }

